@@ -188,25 +188,119 @@ int LinuxParser::TotalProcesses() {
   return 0;
 }
 
-// TODO: Read and return the number of running processes
-int LinuxParser::RunningProcesses() { return 0; }
+// TODO: Read and return the number of running processes (DONE) 
+int LinuxParser::RunningProcesses() {
+  string key;
+  string line;
+  int value;
+  
+  std::ifstream filestream(kProcDirectory + kStatFilename);
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) {
+      std::istringstream linestream(line);
+      linestream >> key >> value;
+      if (key == "procs_running") {
+        return value;
+      }
+    }
+    filestream.close();
+  }
+  return 0;
+}
 
-// TODO: Read and return the command associated with a process
+// TODO: Read and return the command associated with a process (DONE) 
 // REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Command(int pid[[maybe_unused]]) { return string(); }
+string LinuxParser::Command(int pid) {
+  string command;
+  
+  std::ifstream filestream(kProcDirectory + std::to_string(pid) + kCmdlineFilename);
+  if (filestream.is_open()) {
+    std::getline(filestream, command);
+  }
+  filestream.close();
+  return command;
+}
 
-// TODO: Read and return the memory used by a process
+// TODO: Read and return the memory used by a process (DONE) 
 // REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Ram(int pid[[maybe_unused]]) { return string(); }
+string LinuxParser::Ram(int pid) { 
+  string line;
+  string key, kb;
+  int value;
+  
+  std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatusFilename);
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) {
+      std::istringstream linestream(line);
+      linestream >> key >> value >> kb;
+      if (key == "VmSize:") {
+        return std::to_string(value / 1024);
+      }
+    }
+    filestream.close();
+  }
+  return string("0");
+}
 
-// TODO: Read and return the user ID associated with a process
+// TODO: Read and return the user ID associated with a process (DONE) 
 // REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::Uid(int pid[[maybe_unused]]) { return string(); }
+string LinuxParser::Uid(int pid) {
+  string line;
+  string key;
+  int value;
+  
+  std::ifstream filestream(kProcDirectory + to_string(pid) + kStatusFilename);
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) {
+      std::istringstream linestream(line);
+      linestream >> key >> value;
+      if (key == "Uid:") {
+        return std::to_string(value);
+      }
+    }
+    filestream.close();
+  }
+  
+  return string("0");
+}
 
-// TODO: Read and return the user associated with a process
+// TODO: Read and return the user associated with a process (DONE)
 // REMOVE: [[maybe_unused]] once you define the function
-string LinuxParser::User(int pid[[maybe_unused]]) { return string(); }
+string LinuxParser::User(int pid) { 
+  string line;
+  string user, x, uid_for_user;
+  
+  std::ifstream filestream(kPasswordPath);
+  if (filestream.is_open()) {
+    while (std::getline(filestream, line)) {
+      std::replace(line.begin(), line.end(), ':', ' ');
+      std::istringstream linestream(line);
+      if (uid_for_user == Uid(pid)) {
+        return user;
+      }
+    }
+    filestream.close();
+  }
+  return string();
+}
 
-// TODO: Read and return the uptime of a process
+// TODO: Read and return the uptime of a process (DONE) 
 // REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::UpTime(int pid[[maybe_unused]]) { return 0; }
+long LinuxParser::UpTime(int pid) { 
+  long uptime_system = LinuxParser::UpTime();
+  long uptime_process = 0, starttime;
+  std::string line;
+  
+  std::ifstream filestream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  if (filestream.is_open()) {
+    std::getline(filestream, line);
+    std::istringstream linestream(line);
+    std::istream_iterator<string> in_iter(linestream), eof;
+    std::vector<string> single_word(in_iter, eof);
+    starttime = stol(single_word[21]);
+    
+    uptime_process = uptime_system - (starttime / sysconf(_SC_CLK_TCK));
+    filestream.close();
+  }
+  return uptime_process;
+}
